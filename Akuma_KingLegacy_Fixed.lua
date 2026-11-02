@@ -3162,7 +3162,8 @@ function t16.AutoFarmMaterial()
 		end
 	end
 end
-function getSpawn()
+function print("[Akuma] UI setup complete - all tabs loaded")
+pcall(getSpawn)
 	task.spawn(function()
 		while task.wait(1) do
 			local ok, result = pcall(function()
@@ -6772,9 +6773,17 @@ LocalPlayer = LocalPlayer:AddSection("", "Esp", "esp player, islands, ghostship,
 
 local Players2 = game:GetService("Players")
 local LocalPlayer4 = Players2.LocalPlayer
-local Parent = script.Parent
-
-Parent = select(2, Players2:GetUserThumbnailAsync(LocalPlayer4.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420))
+-- Fixed: script.Parent does not exist in most executors and was crashing before toggles loaded
+local Parent = nil
+pcall(function()
+	Parent = script and script.Parent
+end)
+-- Thumbnail is optional; never block UI setup on it (must not yield main thread)
+task.spawn(function()
+	pcall(function()
+		select(2, Players2:GetUserThumbnailAsync(LocalPlayer4.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420))
+	end)
+end)
 
 local thread = nil
 
@@ -6855,47 +6864,18 @@ function Label(p148, p149, p150)
 	end
 end
 
-LoadSettings()
+-- Build main farm section (this is where toggles are added)
+if not v346 then
+	warn("[Akuma] Main Farm tab (v346) is nil - UI library may have failed")
+else
+	Parent = v346:AddSection("", "Main Farming", "auto farm level, materials, auto 1/2 sea", "rbxassetid://10734975692")
+	print("[Akuma] Main Farming section created")
+end
 
--- Fixed: keep myWeapon and _G.Weapon updated
-task.spawn(function()
-	while task.wait(2) do
-		pcall(function()
-			if not Client or not Client.Character then return end
-			for _, child in pairs(Client.Character:GetChildren()) do
-				if child:IsA("Tool") then
-					local tip = child.ToolTip
-					if tip == "Combat" or tip == "Melee" then
-						myWeapon.Melee = child.Name
-						if _G.Settings.Select_Weapon == "Melee" then _G.Weapon = child.Name end
-					elseif tip == "Sword" then
-						myWeapon.Sword = child.Name
-						if _G.Settings.Select_Weapon == "Sword" then _G.Weapon = child.Name end
-					elseif tip == "Fruit Power" then
-						myWeapon.Fruit = child.Name
-						myWeapon["Fruit Power"] = child.Name
-						if _G.Settings.Select_Weapon == "Fruit" then _G.Weapon = child.Name end
-					end
-				end
-			end
-			for _, child in pairs(Client.Backpack:GetChildren()) do
-				if child:IsA("Tool") then
-					local tip = child.ToolTip
-					if tip == "Combat" or tip == "Melee" then
-						myWeapon.Melee = child.Name
-					elseif tip == "Sword" then
-						myWeapon.Sword = child.Name
-					elseif tip == "Fruit Power" then
-						myWeapon.Fruit = child.Name
-						myWeapon["Fruit Power"] = child.Name
-					end
-				end
-			end
-		end)
-	end
-end)
-
-Parent = v346:AddSection("", "Main Farming", "auto farm leve, materials, auto 1/2 sea", "rbxassetid://10734975692")
+if not Parent then
+	warn("[Akuma] Parent section is nil - toggles will not load")
+	Parent = v346 -- fallback to tab itself
+end
 
 local v773 = Parent:AddLabel("Auto Farming: Inactive")
 local v774 = Parent:AddLabel("Quest: N/A")
@@ -6941,6 +6921,7 @@ end
 
 Toggle("Auto Farm Level", Parent, "Auto_Farm_Level1")
 Toggle("Auto Farm Near", Parent, "Auto_Farm_Nearest_Mob")
+print("[Akuma] Core farm toggles loaded")
 
 if Sea1 then
 	Toggle("Auto Second Sea [Lv. 2250]", Parent, "Auto_Sea21")
@@ -8981,7 +8962,8 @@ function FindHydraIsland()
 end
 
 -- loadstring(game:HttpGet("https://raw.githubusercontent.com/ZenHubbScript/Main/refs/heads/main/log"))() -- disabled for safety
-getSpawn()
+print("[Akuma] UI setup complete - all tabs loaded")
+pcall(getSpawn)
 -- Fixed: protect metatable hook
 local okMeta, Settings = pcall(getrawmetatable, game)
 if not okMeta or not Settings then
